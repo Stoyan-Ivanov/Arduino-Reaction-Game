@@ -5,6 +5,7 @@
 
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
+#include <EEPROM.h>
 
 LiquidCrystal_I2C lcd(0x3F,16,2);
 
@@ -17,6 +18,8 @@ int game_points = 0;
 int delay_time = 900;
 int flag = 0;
 int level;
+int record_points = 0;
+String record_player;
 
 void setup() {
   Serial.begin(9600);
@@ -28,10 +31,13 @@ void setup() {
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, INPUT_PULLUP);
   pinMode(8, INPUT_PULLUP);
   pinMode(9, INPUT_PULLUP);
   pinMode(10, INPUT_PULLUP);
   pinMode(11, INPUT_PULLUP);
+  pinMode(12, INPUT_PULLUP);
   
 }
 
@@ -41,6 +47,9 @@ void loop() {
   delay_time = 900;
   flag = 0;
   level = 0;
+  int points_needed_to_revive = 10;
+
+  //read_EEPROM();
 
   lcd.setCursor(0,0);
   lcd.print(" START THE GAME ");
@@ -51,11 +60,13 @@ void loop() {
   digitalWrite(3, HIGH);
   digitalWrite(4, HIGH);
   digitalWrite(5, HIGH);
+  digitalWrite(6, HIGH);
   delay(300);
   digitalWrite(2, LOW);
   digitalWrite(3, LOW);
   digitalWrite(4, LOW);
   digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
   delay(300);
  
   while(1) {
@@ -107,13 +118,37 @@ void loop() {
       lcd.print("DEAD! GAME OVER");
       delay(5000);
       lcd.clear();
-      break;
+      
+      if(revive(points_needed_to_revive)) {
+          lcd.setCursor(8,0);
+          lcd.print("3");
+          delay(1000);
+          lcd.clear();
+  
+          lcd.setCursor(8,0);
+          lcd.print("2");
+          delay(1000);
+          lcd.clear();
+  
+          lcd.setCursor(8,0);
+          lcd.print("1");
+          delay(1000);
+          lcd.clear();
+          
+          points_needed_to_revive += 5;
+          
+      } else {
+         // if(game_points > record_points) {
+            enter_high_score();
+        //  }
+          break;
+      }
     }
   }
 }
 
 void stage_one() {
-  first_led = random(2,6);
+  first_led = random(2,7);
     
     digitalWrite(first_led, HIGH);
     
@@ -138,11 +173,11 @@ void stage_one() {
 }
 
 void stage_two() {
-    first_led = random(2,6);
-    second_led = random(2,6);
+    first_led = random(2,7);
+    second_led = random(2,7);
   
     while(second_led == first_led) {
-        second_led = random(2,6);
+        second_led = random(2,7);
     }
   
     digitalWrite(first_led, HIGH);
@@ -168,4 +203,92 @@ void stage_two() {
     digitalWrite(second_led, LOW);
     delay(delay_time);
 }
+
+bool revive(int points_needed_to_revive) {
+  if(game_points >= points_needed_to_revive) {
+      lcd.setCursor(0,0);
+      lcd.print("Click Special:");
+      lcd.setCursor(0,1);
+      lcd.print("to revive (");
+      lcd.print(points_needed_to_revive);
+      lcd.print(")");
+      
+      now = millis(); 
+      while(millis() <= now + 5000) {
+        if(digitalRead(7) == LOW) {
+           game_points -= points_needed_to_revive;
+           lives = 3;
+           lcd.clear();
+           return true;
+        } 
+      }
+   }
+   lcd.clear();
+   return false;
+}
+
+void enter_high_score() {
+   char alphabet[27] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '\0'};
+   int pos = 0;
+   int x = 0;
+   int y = 0;
+   int i = 0;
+   char name_string[16];
+   char letter;
+   int name_counter = 0;
+   lcd.clear();
+   lcd.setCursor(0,0);
+   lcd.print(alphabet[0]);
+   letter = alphabet[i];
+   
+  while(1) {
+    if(digitalRead(7) == LOW) {
+       name_string[name_counter] = letter;
+       break;
+    }
+  
+    if(digitalRead(8) == LOW) {
+       i++; 
+       if(i == 26) {
+          i = 0;
+       }
+  
+       letter = alphabet[i];
+       lcd.setCursor(x,y);
+       lcd.print(letter);
+       delay(300);
+    }
+  
+    if(digitalRead(9) == LOW) {
+        name_string[name_counter] = letter;
+        name_counter++;
+        x++;
+        lcd.setCursor(x,y);
+        i = 0;
+        letter = alphabet[i];
+        lcd.print(letter);
+        delay(300);
+    } 
+  }
+  
+   lcd.clear();
+   lcd.setCursor(0,0);
+   //lcd.print("name:");
+   lcd.setCursor(0,1);
+   String printable = "";
+   
+   for(i = 0; i <= name_counter; i++) {
+      if(name_string[i] >= 'A' && name_string[i] <= 'Z') {
+          printable += name_string[i];
+      }
+        
+   }
+   Serial.print(printable);
+   Serial.print(" -> ");
+   Serial.println(game_points);
+   //lcd.print(printable);
+   delay(2000);
+   lcd.clear();
+}
+
 
