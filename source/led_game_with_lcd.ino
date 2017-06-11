@@ -102,13 +102,25 @@ void loop() {
     lcd.print(" Lives: ");
     lcd.print(lives);
 
-    if(game_points >= 10) {
-      stage_two();
+    if(game_points < 50) {
+
+      if(game_points >= 10) {
+        stage_two();
+      } else {
+         stage_one();
+      }
+      
     } else {
-       stage_one();
+        int option = random(1, 3);
+
+        if(option == 1) {
+          stage_one();
+          
+        } else {
+          stage_two();
+        }
     }
    
-    
     if(lives  == 0) {
       lcd.clear();
       lcd.setCursor(0,0);
